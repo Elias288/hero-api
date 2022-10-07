@@ -2,6 +2,8 @@
 /dist
 /node_modules
 
+/environments
+
 # Logs
 logs
 *.log
@@ -10,6 +12,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+package-lock.json
 
 # OS
 .DS_Store

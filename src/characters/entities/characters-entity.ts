@@ -1,4 +1,4 @@
-export class CreateCharactersDto {
+export class CharactersEntity {
   id: number;
   name: string;
   description: string;
