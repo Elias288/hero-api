@@ -5,6 +5,8 @@ import { createHash } from 'crypto';
 import { lastValueFrom, map } from 'rxjs';
 
 import { CreateCharactersDto } from '../dto/create.characters.dto';
+import { Character } from '../../schemas/character.schema';
+import { Comic } from '../../schemas/comic.schema';
 
 @Injectable()
 export class MarvelService {
@@ -86,11 +88,63 @@ export class MarvelService {
             characterDto.id = character2.id;
             characterDto.name = character2.name;
             characterDto.description = character2.description;
-            characterDto.image =
-              character2.thumbnail.path + '.' + character2.thumbnail.extension;
+            characterDto.image = `${character2.thumbnail.path}.${character2.thumbnail.extension}`;
             dtoList.push(characterDto);
           });
           return dtoList;
+        }),
+      ),
+    );
+  }
+
+  getCharacterById(id: string): Promise<Character> {
+    const privateKey = this.config.get<string>('PRIVATE_KEY');
+    const ts = this.config.get<string>('TS');
+    const publicKey = this.config.get<string>('PUBLIC_KEY');
+
+    const md5 = createHash('md5')
+      .update(ts + privateKey + publicKey)
+      .digest('hex');
+    const uri = `https://gateway.marvel.com:443/v1/public/characters/${id}?apikey=${publicKey}&ts=${ts}&hash=${md5}`;
+
+    return lastValueFrom(
+      this.httpService.get(uri).pipe(
+        map((res) => {
+          const characterInfo = res.data.data.results[0];
+          const character = new Character();
+          character.heroId = characterInfo.id;
+          character.name = characterInfo.name;
+          character.description = characterInfo.description;
+          character.image = `${characterInfo.thumbnail.path}.${characterInfo.thumbnail.extension}`;
+
+          return character;
+        }),
+      ),
+    );
+  }
+
+  getComicByCharacterId(characterId: number): Promise<Comic[]> {
+    const privateKey = this.config.get<string>('PRIVATE_KEY');
+    const ts = this.config.get<string>('TS');
+    const publicKey = this.config.get<string>('PUBLIC_KEY');
+
+    const md5 = createHash('md5')
+      .update(ts + privateKey + publicKey)
+      .digest('hex');
+    const uri = `https://gateway.marvel.com:443/v1/public/characters/${characterId}/comics?apikey=${publicKey}&ts=${ts}&hash=${md5}`;
+
+    return lastValueFrom(
+      this.httpService.get(uri).pipe(
+        map((res) => {
+          return res.data.data.results.map((comic) => {
+            const comicDto = new Comic();
+            comicDto.comicId = comic.id;
+            comicDto.title = comic.title;
+            comicDto.description = comic.description;
+            comicDto.format = comic.format;
+            // console.log(comicDto);
+            return comicDto;
+          });
         }),
       ),
     );

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
+import { MongooseModule } from '@nestjs/mongoose';
 import { CharacterModule } from './characters/character.module';
 
 @Module({
@@ -12,6 +13,16 @@ import { CharacterModule } from './characters/character.module';
         '.env.' + process.env.ENVI.trim(),
       ),
     }),
+
+    // Configuración para conexión con MongoDB a través de Mongoose
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('NOSQL_URI'),
+      }),
+    }),
+
     CharacterModule,
   ],
   controllers: [],
