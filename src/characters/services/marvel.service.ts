@@ -1,73 +1,24 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'crypto';
+import { Model, ObjectId } from 'mongoose';
 import { lastValueFrom, map } from 'rxjs';
+import CharacterDto from 'src/dtos/character.dto';
+import ComicDto from 'src/dtos/comic.dto';
+import { Comic, ComicDocument } from 'src/schemas/comic.schema';
 
-import { CreateCharactersDto } from '../dto/create.characters.dto';
-import { Character } from '../../schemas/character.schema';
-import { Comic } from '../../schemas/comic.schema';
+import { Character } from '../../schemas/character.nosql.schema';
 
 @Injectable()
 export class MarvelService {
-  private;
   constructor(
     private readonly config: ConfigService,
     private readonly httpService: HttpService,
+    @InjectModel(Comic.name)
+    private readonly comicModel: Model<ComicDocument>,
   ) {}
-
-  /* getCharactersWithFetch(page: number): object {
-    const offset = page * 20;
-    const md5 = createHash('md5')
-      .update(process.env.TS + process.env.PRIVATE_KEY + process.env.PUBLIC_KEY)
-      .digest('hex');
-    const uri = `https://gateway.marvel.com:443/v1/public/characters?apikey=${process.env.PUBLIC_KEY}&ts=${process.env.TS}&hash=${md5}&offset=${offset}`;
-
-    return fetch(uri)
-      .then((res) => res.json())
-      .then((characters) => {
-        const DtoList = [];
-        characters.data.results.forEach((characterInfo: any) => {
-          const characterDto = new CreateCharactersDto();
-          characterDto.id = characterInfo.id;
-          characterDto.name = characterInfo.name;
-          characterDto.description = characterInfo.description;
-          characterDto.image =
-            characterInfo.thumbnail.path +
-            '.' +
-            characterInfo.thumbnail.extension;
-          DtoList.push(characterDto);
-        });
-
-        return {
-          page: offset,
-          characters: DtoList,
-        };
-      });
-  }
-
-  getCharacterByIdWithFetch(id: number): object {
-    const md5 = createHash('md5')
-      .update(process.env.TS + process.env.PRIVATE_KEY + process.env.PUBLIC_KEY)
-      .digest('hex');
-    const uri = `https://gateway.marvel.com:443/v1/public/characters/${id}?apikey=${process.env.PUBLIC_KEY}&ts=${process.env.TS}&hash=${md5}`;
-
-    return fetch(uri)
-      .then((res) => res.json())
-      .then((character: any) => {
-        const dtoList = [];
-        character.data.results.forEach((character2) => {
-          const characterDto = new CreateCharactersDto();
-          characterDto.name = character2.id;
-          characterDto.name = character2.name;
-          characterDto.description = character2.description;
-          characterDto.image =
-            character2.thumbnail.path + '.' + character2.thumbnail.extension;
-          dtoList.push(characterDto);
-        });
-        return dtoList;
-      });
-  } */
 
   getAllCharacters(offset: number, limit: number): any {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
@@ -84,8 +35,8 @@ export class MarvelService {
         map((res) => {
           const dtoList = [];
           res.data.data.results.forEach((character2) => {
-            const characterDto = new CreateCharactersDto();
-            characterDto.id = character2.id;
+            const characterDto = new Character();
+            characterDto.heroId = character2.id;
             characterDto.name = character2.name;
             characterDto.description = character2.description;
             characterDto.image = `${character2.thumbnail.path}.${character2.thumbnail.extension}`;
@@ -97,7 +48,7 @@ export class MarvelService {
     );
   }
 
-  getCharacterById(id: string): Promise<Character> {
+  getCharacterById(id: string): Promise<Promise<CharacterDto>> {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
     const ts = this.config.get<string>('TS');
     const publicKey = this.config.get<string>('PUBLIC_KEY');
@@ -109,21 +60,22 @@ export class MarvelService {
 
     return lastValueFrom(
       this.httpService.get(uri).pipe(
-        map((res) => {
+        map(async (res) => {
           const characterInfo = res.data.data.results[0];
-          const character = new Character();
-          character.heroId = characterInfo.id;
-          character.name = characterInfo.name;
-          character.description = characterInfo.description;
-          character.image = `${characterInfo.thumbnail.path}.${characterInfo.thumbnail.extension}`;
+          const characterDto = this.CharacterToCharacterDto(characterInfo);
+          // console.log(characterDto);
 
-          return character;
+          characterDto.comics = await this.saveComicIdsByCharacterId(
+            characterInfo.id,
+          );
+
+          return characterDto;
         }),
       ),
     );
   }
 
-  getComicByCharacterId(characterId: number): Promise<Comic[]> {
+  async saveComicIdsByCharacterId(characterId: number): Promise<ObjectId[]> {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
     const ts = this.config.get<string>('TS');
     const publicKey = this.config.get<string>('PUBLIC_KEY');
@@ -135,18 +87,53 @@ export class MarvelService {
 
     return lastValueFrom(
       this.httpService.get(uri).pipe(
-        map((res) => {
-          return res.data.data.results.map((comic) => {
-            const comicDto = new Comic();
-            comicDto.comicId = comic.id;
-            comicDto.title = comic.title;
-            comicDto.description = comic.description;
-            comicDto.format = comic.format;
-            // console.log(comicDto);
-            return comicDto;
+        map(async (res) => {
+          const t = res.data.data.results.map(async (comic) => {
+            const newComicDto = this.ComicToComicDto(comic);
+            // console.log(newComicDto);
+
+            const comic2 = await this.comicModel.findOne({
+              comicId: newComicDto.comicId,
+            });
+
+            if (comic2) {
+              return comic2;
+            }
+
+            const newComic = await this.comicModel.create(newComicDto);
+            return newComic.save();
+          });
+
+          const t2 = await Promise.all(t);
+          // console.log(t2);
+
+          return t2.map((comic) => {
+            return comic._id;
           });
         }),
       ),
     );
+  }
+
+  CharacterToCharacterDto(character): CharacterDto {
+    // console.log(character);
+
+    const characterDto = new CharacterDto();
+    characterDto.heroId = character.id;
+    characterDto.name = character.name;
+    characterDto.description = character.description;
+    characterDto.image = `${character.thumbnail.path}.${character.thumbnail.extension}`;
+
+    return characterDto;
+  }
+
+  ComicToComicDto(comic): ComicDto {
+    const comicDto = new ComicDto();
+    comicDto.comicId = comic.id;
+    comicDto.description = comic.description;
+    comicDto.title = comic.title;
+    comicDto.format = comic.format;
+
+    return comicDto;
   }
 }

@@ -1,5 +1,5 @@
-export class CreateComicDto {
-  id: number;
+export default class ComicDto {
+  comicId: number;
   title: string;
   description: string;
   format: string;

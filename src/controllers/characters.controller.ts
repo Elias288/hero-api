@@ -1,13 +1,14 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Post,
   // Put,
 } from '@nestjs/common';
-import { HeroeNoSQLService } from '../services/heroe-nosql.service';
-import { MarvelService } from '../services/marvel.service';
+import { HeroeNoSQLService } from '../characters/services/heroe-nosql.service';
+import { MarvelService } from '../characters/services/marvel.service';
 
 @Controller('characters')
 export class CharactersController {
@@ -35,15 +36,11 @@ export class CharactersController {
   }
 
   @Post('nosql/:id')
-  saveHeroeNoSQL(@Param('id') id: string) {
-    const heroe = this.marvelService.getCharacterById(id);
+  async saveHeroeNoSQL(@Param('id') id: string) {
+    const heroeDto = await this.marvelService.getCharacterById(id);
+    const heroe = this.heroeNoSQLService.CharacterDtoToCharacter(heroeDto);
 
-    // transformar heroe en lo que requiero guardar
-    return heroe.then((hero) => {
-      // console.log(hero);
-      this.heroeNoSQLService.save(hero);
-      return heroe;
-    });
+    return this.heroeNoSQLService.save(heroe);
   }
 
   // @Put('nosql/:idHeroeExistente/:idNuevoHeroe')
@@ -51,14 +48,14 @@ export class CharactersController {
   //   @Param('idHeroeExistente') idHeroeExistente: string,
   //   @Param('idNuevoHeroe') idNuevoHeroe: string,
   // ) {
-  //   // const newHeroe = this.marvelHeroeService.getHeroe(idNuevoHeroe);
+  //   const newHeroe = this.marvelService.getCharacterById(idNuevoHeroe);
   //   // transformar el nuevo heroe para reemplazar los datos del heroe señalado
   //   this.heroeNoSQLService.update();
   // }
 
-  // @Put('nosql/:id')
-  // deleteHeroeNoSQL(@Param('id') id: string) {
-  //   // buscar el heroe indicado en mi base de datos para poderlo borrar
-  //   this.heroeNoSQLService.delete(id);
-  // }
+  @Delete('nosql/:id')
+  deleteHeroeNoSQL(@Param('id') id: string) {
+    // buscar el heroe indicado en mi base de datos para poderlo borrar
+    this.heroeNoSQLService.delete(id);
+  }
 }

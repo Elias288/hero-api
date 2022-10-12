@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 
 export type CharacterDocument = Character & Document;
 
@@ -16,6 +16,9 @@ export class Character {
 
   @Prop()
   image: string;
+
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comic' }] })
+  comics: number[];
 }
 
 export const CharacterSchema = SchemaFactory.createForClass(Character);
