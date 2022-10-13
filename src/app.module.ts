@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CharacterModule } from './characters/character.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
@@ -20,6 +21,24 @@ import { CharacterModule } from './characters/character.module';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         uri: configService.get<string>('NOSQL_URI'),
+      }),
+    }),
+
+    // Configuración para conexión con PostgreSQL a través de TypeORM
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USER'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        // entities: [],
+        autoLoadEntities: true,
+        synchronize: true,
+        logging: process.env.ENVI === 'production' ? false : true,
       }),
     }),
 

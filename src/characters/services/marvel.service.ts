@@ -3,13 +3,14 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'crypto';
-import { Model, ObjectId } from 'mongoose';
+import { Model } from 'mongoose';
 import { lastValueFrom, map } from 'rxjs';
 import CharacterDto from 'src/dtos/character.dto';
 import ComicDto from 'src/dtos/comic.dto';
+import { ComicEntity } from 'src/entity/comic.entity';
 import { Comic, ComicDocument } from 'src/schemas/comic.schema';
 
-import { Character } from '../../schemas/character.nosql.schema';
+import { Character } from '../../schemas/character.schema';
 
 @Injectable()
 export class MarvelService {
@@ -65,17 +66,13 @@ export class MarvelService {
           const characterDto = this.CharacterToCharacterDto(characterInfo);
           // console.log(characterDto);
 
-          characterDto.comics = await this.saveComicIdsByCharacterId(
-            characterInfo.id,
-          );
-
           return characterDto;
         }),
       ),
     );
   }
 
-  async saveComicIdsByCharacterId(characterId: number): Promise<ObjectId[]> {
+  getComicIdsByCharacterId(characterId: number): Promise<ComicDto[]> {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
     const ts = this.config.get<string>('TS');
     const publicKey = this.config.get<string>('PUBLIC_KEY');
@@ -87,28 +84,9 @@ export class MarvelService {
 
     return lastValueFrom(
       this.httpService.get(uri).pipe(
-        map(async (res) => {
-          const t = res.data.data.results.map(async (comic) => {
-            const newComicDto = this.ComicToComicDto(comic);
-            // console.log(newComicDto);
-
-            const comic2 = await this.comicModel.findOne({
-              comicId: newComicDto.comicId,
-            });
-
-            if (comic2) {
-              return comic2;
-            }
-
-            const newComic = await this.comicModel.create(newComicDto);
-            return newComic.save();
-          });
-
-          const t2 = await Promise.all(t);
-          // console.log(t2);
-
-          return t2.map((comic) => {
-            return comic._id;
+        map((res) => {
+          return res.data.data.results.map((comic) => {
+            return this.ComicToComicDto(comic);
           });
         }),
       ),
@@ -116,8 +94,6 @@ export class MarvelService {
   }
 
   CharacterToCharacterDto(character): CharacterDto {
-    // console.log(character);
-
     const characterDto = new CharacterDto();
     characterDto.heroId = character.id;
     characterDto.name = character.name;
@@ -134,6 +110,20 @@ export class MarvelService {
     comicDto.title = comic.title;
     comicDto.format = comic.format;
 
+    if (comicDto.description && comicDto.description.length > 0) {
+      comicDto.description = comicDto.description.substring(0, 250);
+    }
+
     return comicDto;
+  }
+
+  comicToComicEntity(comic): ComicEntity {
+    const comicEntity = new ComicEntity();
+    comicEntity.comicId = comic.comicId;
+    comicEntity.title = comic.title;
+    comicEntity.format = comic.format;
+    comicEntity.description = comic.description;
+
+    return comicEntity;
   }
 }

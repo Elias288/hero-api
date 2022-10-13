@@ -1,10 +1,13 @@
+import { HttpService } from '@nestjs/axios';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
-import {
-  Character,
-  CharacterDocument,
-} from '../../schemas/character.nosql.schema';
+import { createHash } from 'crypto';
+import { Connection, Model, ObjectId } from 'mongoose';
+import { lastValueFrom, map } from 'rxjs';
+import ComicDto from 'src/dtos/comic.dto';
+import { Comic, ComicDocument } from 'src/schemas/comic.schema';
+import { Character, CharacterDocument } from '../../schemas/character.schema';
 
 @Injectable()
 export class HeroeNoSQLService {
@@ -12,6 +15,10 @@ export class HeroeNoSQLService {
     @InjectConnection() private connection: Connection,
     @InjectModel(Character.name)
     private characterModel: Model<CharacterDocument>,
+    private readonly config: ConfigService,
+    private readonly httpService: HttpService,
+    @InjectModel(Comic.name)
+    private readonly comicModel: Model<ComicDocument>,
   ) {}
 
   async getCharacterbyId(id: number) {
@@ -33,10 +40,8 @@ export class HeroeNoSQLService {
     if (character) {
       throw new BadRequestException('El usuario ya existe');
     }
-    // console.log(heroe);
 
     const newCharacter = await this.characterModel.create(heroe);
-    // console.log(newCharacter);
     return newCharacter.save();
   }
 
@@ -53,15 +58,50 @@ export class HeroeNoSQLService {
     return (await character).delete();
   }
 
-  CharacterDtoToCharacter(CharacterDto): Character {
-    const heroe = new Character();
-    heroe.heroId = CharacterDto.heroId;
-    heroe.name = CharacterDto.name;
-    heroe.description = CharacterDto.description;
-    heroe.image = CharacterDto.image;
+  async saveComicIdsByCharacterId(characterId: number): Promise<ObjectId[]> {
+    const privateKey = this.config.get<string>('PRIVATE_KEY');
+    const ts = this.config.get<string>('TS');
+    const publicKey = this.config.get<string>('PUBLIC_KEY');
 
-    heroe.comics = CharacterDto.comics;
+    const md5 = createHash('md5')
+      .update(ts + privateKey + publicKey)
+      .digest('hex');
+    const uri = `https://gateway.marvel.com:443/v1/public/characters/${characterId}/comics?apikey=${publicKey}&ts=${ts}&hash=${md5}`;
 
-    return heroe;
+    return lastValueFrom(
+      this.httpService.get(uri).pipe(
+        map(async (res) => {
+          const t = res.data.data.results.map(async (comic) => {
+            const newComicDto = this.ComicToComicDto(comic);
+            // console.log(newComicDto);
+
+            const comic2 = await this.comicModel.findOne({
+              comicId: newComicDto.comicId,
+            });
+            if (comic2) {
+              return comic2;
+            }
+
+            const newComic = await this.comicModel.create(newComicDto);
+            return newComic.save();
+          });
+
+          const t2 = await Promise.all(t);
+          return t2.map((comic) => {
+            return comic._id;
+          });
+        }),
+      ),
+    );
+  }
+
+  ComicToComicDto(comic): ComicDto {
+    const comicDto = new ComicDto();
+    comicDto.comicId = comic.id;
+    comicDto.description = comic.description;
+    comicDto.title = comic.title;
+    comicDto.format = comic.format;
+
+    return comicDto;
   }
 }
