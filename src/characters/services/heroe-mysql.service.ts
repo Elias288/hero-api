@@ -36,8 +36,12 @@ export class HeroeMySQLService {
     return this.characterRepository.manager.save(heroe);
   }
 
-  delete(id: number) {
-    throw new Error('no implementado');
+  async delete(id: number) {
+    const character = await this.characterRepository.findOne({
+      where: { heroId: id },
+    });
+    // const question = this.characterRepository.getRepository();
+    return await this.characterRepository.delete(character);
   }
 
   //   update() {

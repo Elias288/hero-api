@@ -90,6 +90,11 @@ export class CharactersController {
   //   this.heroeNoSQLService.update();
   // }
 
+  @Delete('sql/:id')
+  deleteHeroeMySQL(@Param('id', ParseIntPipe) id: number) {
+    return this.heroeMySQLService.delete(id);
+  }
+
   @Delete('nosql/:id')
   deleteHeroeNoSQL(@Param('id') id: string) {
     // buscar el heroe indicado en mi base de datos para poderlo borrar

@@ -4,6 +4,7 @@ import { join } from 'path';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CharacterModule } from './characters/character.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ComicsController } from './comics/comics.controller';
 
 @Module({
   imports: [
@@ -44,7 +45,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
     CharacterModule,
   ],
-  controllers: [],
+  controllers: [ComicsController],
   providers: [],
 })
 export class AppModule {}
