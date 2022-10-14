@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 
 export type ComicDocument = Comic & Document;
 
@@ -16,6 +16,9 @@ export class Comic {
 
   @Prop()
   format: string;
+
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Character' }] })
+  characters: number[];
 }
 
 export const ComicSchema = SchemaFactory.createForClass(Comic);

@@ -1,18 +1,17 @@
 import { HttpService } from '@nestjs/axios';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'crypto';
-import { Connection, Model, ObjectId } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { lastValueFrom, map } from 'rxjs';
 import ComicDto from 'src/dtos/comic.dto';
 import { Comic, ComicDocument } from 'src/schemas/comic.schema';
-import { Character, CharacterDocument } from '../../schemas/character.schema';
+import { Character, CharacterDocument } from '../schemas/character.schema';
 
 @Injectable()
 export class HeroeNoSQLService {
   constructor(
-    @InjectConnection() private connection: Connection,
     @InjectModel(Character.name)
     private characterModel: Model<CharacterDocument>,
     private readonly config: ConfigService,
@@ -20,6 +19,10 @@ export class HeroeNoSQLService {
     @InjectModel(Comic.name)
     private readonly comicModel: Model<ComicDocument>,
   ) {}
+
+  getAllCharacters() {
+    return this.characterModel.find().exec();
+  }
 
   async getCharacterbyId(id: number) {
     const character = await this.characterModel
@@ -50,12 +53,12 @@ export class HeroeNoSQLService {
   }
 
   async delete(heroId: string) {
-    const character = this.characterModel.findOne({ heroId });
+    const character = await this.characterModel.findOne({ heroId });
     if (!character) {
       throw new BadRequestException('El usuario no existe');
     }
 
-    return (await character).delete();
+    return character.delete();
   }
 
   async saveComicIdsByCharacterId(characterId: number): Promise<ObjectId[]> {

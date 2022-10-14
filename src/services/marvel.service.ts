@@ -1,27 +1,20 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
 import { createHash } from 'crypto';
-import { Model } from 'mongoose';
 import { lastValueFrom, map } from 'rxjs';
 import CharacterDto from 'src/dtos/character.dto';
 import ComicDto from 'src/dtos/comic.dto';
 import { ComicEntity } from 'src/entity/comic.entity';
-import { Comic, ComicDocument } from 'src/schemas/comic.schema';
-
-import { Character } from '../../schemas/character.schema';
 
 @Injectable()
 export class MarvelService {
   constructor(
     private readonly config: ConfigService,
     private readonly httpService: HttpService,
-    @InjectModel(Comic.name)
-    private readonly comicModel: Model<ComicDocument>,
   ) {}
 
-  getAllCharacters(offset: number, limit: number): any {
+  getAllCharacters(offset: number, limit: number): Promise<CharacterDto[]> {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
     const ts = this.config.get<string>('TS');
     const publicKey = this.config.get<string>('PUBLIC_KEY');
@@ -34,22 +27,36 @@ export class MarvelService {
     return lastValueFrom(
       this.httpService.get(uri).pipe(
         map((res) => {
-          const dtoList = [];
-          res.data.data.results.forEach((character2) => {
-            const characterDto = new Character();
-            characterDto.heroId = character2.id;
-            characterDto.name = character2.name;
-            characterDto.description = character2.description;
-            characterDto.image = `${character2.thumbnail.path}.${character2.thumbnail.extension}`;
-            dtoList.push(characterDto);
+          return res.data.data.results.map((character2) => {
+            return this.CharacterToCharacterDto(character2);
           });
-          return dtoList;
         }),
       ),
     );
   }
 
-  getCharacterById(id: string): Promise<Promise<CharacterDto>> {
+  getAllComics(offset: number, limit: number): Promise<ComicDto[]> {
+    const privateKey = this.config.get<string>('PRIVATE_KEY');
+    const ts = this.config.get<string>('TS');
+    const publicKey = this.config.get<string>('PUBLIC_KEY');
+
+    const md5 = createHash('md5')
+      .update(ts + privateKey + publicKey)
+      .digest('hex');
+    const uri = `https://gateway.marvel.com:443/v1/public/comics?apikey=${publicKey}&ts=${ts}&hash=${md5}&limit=${limit}&offset=${offset}`;
+
+    return lastValueFrom(
+      this.httpService.get(uri).pipe(
+        map((res) => {
+          return res.data.data.results.map((comic) => {
+            return this.ComicToComicDto(comic);
+          });
+        }),
+      ),
+    );
+  }
+
+  async getCharacterById(id: string): Promise<CharacterDto> {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
     const ts = this.config.get<string>('TS');
     const publicKey = this.config.get<string>('PUBLIC_KEY');
@@ -59,7 +66,7 @@ export class MarvelService {
       .digest('hex');
     const uri = `https://gateway.marvel.com:443/v1/public/characters/${id}?apikey=${publicKey}&ts=${ts}&hash=${md5}`;
 
-    return lastValueFrom(
+    return await lastValueFrom(
       this.httpService.get(uri).pipe(
         map(async (res) => {
           const characterInfo = res.data.data.results[0];
@@ -72,7 +79,28 @@ export class MarvelService {
     );
   }
 
-  getComicIdsByCharacterId(characterId: number): Promise<ComicDto[]> {
+  async getComicById(id: number): Promise<ComicDto> {
+    const privateKey = this.config.get<string>('PRIVATE_KEY');
+    const ts = this.config.get<string>('TS');
+    const publicKey = this.config.get<string>('PUBLIC_KEY');
+
+    const md5 = createHash('md5')
+      .update(ts + privateKey + publicKey)
+      .digest('hex');
+    const uri = `https://gateway.marvel.com:443/v1/public/comics/${id}?apikey=${publicKey}&ts=${ts}&hash=${md5}`;
+
+    return await lastValueFrom(
+      this.httpService.get(uri).pipe(
+        map(async (res) => {
+          const comicInfo = res.data.data.results[0];
+          const comicDto = this.ComicToComicDto(comicInfo);
+          return comicDto;
+        }),
+      ),
+    );
+  }
+
+  getComicByCharacterId(characterId: number): Promise<ComicDto[]> {
     const privateKey = this.config.get<string>('PRIVATE_KEY');
     const ts = this.config.get<string>('TS');
     const publicKey = this.config.get<string>('PUBLIC_KEY');

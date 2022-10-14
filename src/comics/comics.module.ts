@@ -3,14 +3,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CharacterEntity } from 'src/entity/character.entity';
-import { ComicEntity } from 'src/entity/comic.entity';
-import { Comic, ComicSchema } from 'src/schemas/comic.schema';
-import { CharactersController } from './characters.controller';
+import { CharacterEntity } from '../entity/character.entity';
+import { ComicEntity } from '../entity/comic.entity';
 import { Character, CharacterSchema } from '../schemas/character.schema';
-import { HeroeMySQLService } from './heroe-mysql.service';
-import { HeroeNoSQLService } from './heroe-nosql.service';
+import { Comic, ComicSchema } from '../schemas/comic.schema';
 import { MarvelService } from '../services/marvel.service';
+import { ComicsMySqlService } from './comics-mysql.service';
+import { ComicsNosqlService } from './comics-nosql.service';
+import { ComicsController } from './comics.controller';
 
 @Module({
   imports: [
@@ -22,7 +22,7 @@ import { MarvelService } from '../services/marvel.service';
     ]),
     TypeOrmModule.forFeature([CharacterEntity, ComicEntity]),
   ],
-  controllers: [CharactersController],
-  providers: [MarvelService, HeroeNoSQLService, HeroeMySQLService],
+  controllers: [ComicsController],
+  providers: [MarvelService, ComicsMySqlService, ComicsNosqlService],
 })
-export class CharacterModule {}
+export class ComicsModule {}
