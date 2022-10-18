@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  mysql-development:
+    image: mysql:8.0.17
+    environment:
+      MYSQL_ROOT_PASSWORD: toor
+      MYSQL_DATABASE: "${DB_DATABASE}"
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "${DB_PORT}:3306"
+  
+  # admin:    
+  #   image: adminer    
+  #   ports:      
+  #     - "8080:8080"

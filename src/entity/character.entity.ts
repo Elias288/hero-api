@@ -13,12 +13,12 @@ export class CharacterEntity {
   heroId: number;
   @Column()
   name: string;
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 500 })
   description: string;
   @Column()
   image: string;
 
-  @ManyToMany((type) => ComicEntity, (comic) => comic.characters, {
+  @ManyToMany(() => ComicEntity, (comic) => comic.characters, {
     cascade: true,
   })
   @JoinTable()

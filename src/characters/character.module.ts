@@ -11,6 +11,7 @@ import { Character, CharacterSchema } from '../schemas/character.schema';
 import { HeroeMySQLService } from './heroe-mysql.service';
 import { HeroeNoSQLService } from './heroe-nosql.service';
 import { MarvelService } from '../services/marvel.service';
+import { ComicsNosqlService } from 'src/comics/comics-nosql.service';
 
 @Module({
   imports: [
@@ -23,6 +24,11 @@ import { MarvelService } from '../services/marvel.service';
     TypeOrmModule.forFeature([CharacterEntity, ComicEntity]),
   ],
   controllers: [CharactersController],
-  providers: [MarvelService, HeroeNoSQLService, HeroeMySQLService],
+  providers: [
+    MarvelService,
+    HeroeNoSQLService,
+    HeroeMySQLService,
+    ComicsNosqlService,
+  ],
 })
 export class CharacterModule {}

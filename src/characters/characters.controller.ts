@@ -12,12 +12,14 @@ import { CharacterEntity } from '../entity/character.entity';
 import { Character } from '../schemas/character.schema';
 import { HeroeNoSQLService } from './heroe-nosql.service';
 import { MarvelService } from '../services/marvel.service';
+import { ComicsNosqlService } from 'src/comics/comics-nosql.service';
 
 @Controller('characters')
 export class CharactersController {
   constructor(
     private readonly marvelService: MarvelService,
     private readonly heroeNoSQLService: HeroeNoSQLService,
+    private readonly comicNoSqlService: ComicsNosqlService,
     private readonly heroeMySQLService: HeroeMySQLService,
   ) {}
 
@@ -39,7 +41,7 @@ export class CharactersController {
   @Post('nosql/:id')
   async saveHeroeNoSQL(@Param('id') id: string) {
     const heroeDto = await this.marvelService.getCharacterById(id);
-    heroeDto.comics = await this.heroeNoSQLService.saveComicIdsByCharacterId(
+    heroeDto.comics = await this.comicNoSqlService.saveComicIdsByCharacterId(
       heroeDto.heroId,
     );
 

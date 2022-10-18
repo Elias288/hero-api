@@ -7,11 +7,11 @@ export class ComicEntity {
   comicId: number;
   @Column()
   title: string;
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true })
   description: string;
   @Column()
   format: string;
 
-  @ManyToMany((type) => CharacterEntity, (character) => character.comics)
+  @ManyToMany(() => CharacterEntity, (character) => character.comics)
   characters: CharacterEntity[];
 }

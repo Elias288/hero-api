@@ -31,7 +31,6 @@ export class HeroeMySQLService {
     const character = await this.characterRepository.findOne({
       where: { heroId: id },
     });
-    // const question = this.characterRepository.getRepository();
     return await this.characterRepository.delete(character);
   }
 
